@@ -1,0 +1,2155 @@
+# .bashrc #**************************************************************************************
+
+#*
+#*                            Source global definitions
+#*
+#**************************************************************************************
+if [ -f /etc/bashrc ]; then
+    . /etc/bashrc
+fi
+# VIM mode
+#set -o vi
+# export all variables and functions
+set -a
+#export A="hello world"
+#**************************************************************************************
+#*
+#*                            PATH Settings
+#*
+#**************************************************************************************
+export PATH=''
+export PATH=/projects/phx/tools/linux:/projects/phx/tools:$PATH
+export PATH=~/bin:/work/bin:/work/apollotool:/opt/repo:/sbin:$PATH
+export PATH=$PATH:/sirius/tools3/bin:/sirius/tools2/bin:/sirius/tools/bin:/usr/local/bin:~/bin/geckodriver:/usr/games:/work/tool-chain/gcc-linaro-7.5.0-2019.12-x86_64_arm-linux-gnueabihf/bin
+export PATH=/bin:/sbin:/usr/bin:$PATH
+export LD_LIBRARY_PATH=./
+
+export PYTHONPATH=''
+export PYTHONPATH=$PYTHONPATH:/work/sandbox/apollotest-core/:~/bin:/bin/geckodriver:/sirius/tools2/bin/python3.4
+export PYTHONPATH=$PYTHONPATH:/work/apollo-box/apollotest-core/:/project/phx/tools/:/work/update_code/apollotest-core
+#export PYTHONPATH=$PYTHONPATH:/work/sandbox/apollotest-core/phx_test/
+#**************************************************************************************
+#*
+#*                            Time Zone Setting
+#*
+#**************************************************************************************
+TZ='Asia/Shanghai'; export TZ
+#**************************************************************************************
+#*
+#*                            Proxy Settings
+#*
+#**************************************************************************************
+export http_proxy=http://web-proxy.boi.hp.com:8080
+export https_proxy=http://web-proxy.boi.hp.com:8080
+# export http_proxy=http://proxy.austin.hp.com:8080
+# export https_proxy=https://proxy.austin.hp.com:8080
+#**************************************************************************************
+#*
+#*                            PS1 Settings
+#*
+#**************************************************************************************
+# 0 off
+# 1 highlight
+# 4 underline
+# 5 blink
+# 7 white
+# 8 invisible
+#前景            背景             颜色
+#---------------------------------------
+#30               40              黑色
+#31               41              紅色
+#32               42              綠色
+#33               43              黃色
+#34               44              藍色
+#35               45              紫紅色
+#36               46              青藍色
+#37               47              白色
+function getBranch
+{
+	br=`git branch 2>/dev/null | grep "*"`
+	if [ -z "$br" ]; then
+		br="no branch"
+        echo $br
+	fi
+	echo "${br/#\* /}"
+}
+function getRemoteBranch
+{
+    br=`git branch -a 2>/dev/null | sed -n '$p'`
+    echo ${br##\*\/}
+}
+if [ "$PS1" ]; then
+	PS1='[\033[1;32;40m\u@\h($(myip)) `date +%Y-%m-%d\(%a\)` \t \w \033[1;31;40m<branch:$(getBranch)>\033[m]\n\\$ '
+fi
+#**************************************************************************************
+#*
+#*                            User specific aliases and functions
+#*
+#**************************************************************************************
+alias gts='git status'
+alias cpc='cp /work/sandbox/apollo-core/scm/phx/EXE/debuglist ~/bin'
+alias cdt='cd /work/sandbox/apollotest-core/phx_test'
+alias cdc='cd /work/sandbox/apollo-core/scm/phx'
+alias ra='rm a.out'
+alias ga='gcc *.c'
+alias j='g++'
+alias ch='chmod 777'
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'
+alias sz='sz -b'
+alias vi='vim -p'
+alias ls='ls --color=auto'
+unalias ll lh la lla 2>/dev/null
+function ll { ls -al --color=auto "$@"; }
+function lh { ls -alh --color=auto "$@"; }
+function la { ls -ah --color=auto "$@"; }
+function lla { ls -alh --color=auto "$@"; }
+function cgrep { grep -Einr --exclude-dir=gen "$@"; }
+#function myip { ifconfig | grep "inet addr:15" | sed -n "s/^\s*inet addr:\(\S*\).*$/\1/p" $@; }
+function myip { ifconfig $(cat /etc/network/interfaces|sed -n "/auto/{s/^\s*auto\s*\(\S*\)\s*$/\1/p}"|sed -n "/lo/d; p") | sed -n "/inet addr/{s/^\s*inet addr\s*:\s*\(\S*\)\s*.*$/\1/p}" "$@"; }
+function nsip { nslookup $(hostname) | sed -n "/Address[^#]*$/{s/^.*:\s*\(.*\)\s*$/\1/p}" "$@"; }
+function randomname { echo $(date +%Y_%m_%d_%H_%M_%S)_$(($RANDOM%1000)); }
+function randomname2 { echo $(date +%Y%m%d%H%M%S)_$(($RANDOM%1000)); }
+ALL_IPS=$(myip)
+ALL_IPS=${ALL_IPS%.*}.{1..255}
+declare -A color_table=(
+    ['clear']='\033[m'
+    ['red']='\033[1;31;40m'
+    ['green']='\033[1;32;40m'
+    ['yellow']='\033[1;33;40m'
+    ['blue']='\033[1;34;40m'
+)
+function _ip_comp
+{
+    COMPREPLY=()
+    [ $COMP_CWORD -eq 1 ] && COMPREPLY=($(compgen -W $ALL_IPS "$2"))
+}
+function _hpnpf_comp
+{
+    COMPREPLY=()
+    [ $COMP_CWORD -eq 2 ] && COMPREPLY=($(compgen -W $ALL_IPS "$2"))
+}
+complete -F _hpnpf_comp -o default hpnpf
+function color_echo_sh
+{
+    local _color=$1; shift;
+    printf "${color_table[$_color]}%s${color_table['clear']}\n" "$*"
+}
+function error_sh
+{
+    local -i _i=0
+    local _func_name=''
+    if [ -t 2 ]; then
+        color_echo_sh red 'Error:' $@ >&2
+        color_echo_sh red 'Callstacks:'
+        for _func_name in ${FUNCNAME[@]}
+        do
+            color_echo_sh red "$(printf "    %10s -> %-15s: Line %d" "${BASH_SOURCE[$_i]}" "$_func_name" "${BASH_LINENO[$_i-1]}")" >&2
+            _i+=1
+        done
+    else
+        echo 'Error:' $@ >&2
+        echo 'Callstacks:' >&2
+        for _func_name in ${FUNCNAME[@]}
+        do
+            echo "$(printf "    %10s -> %-15s: Line %d" "${BASH_SOURCE[$_i]}" "$_func_name" "${BASH_LINENO[$_i]}")" >&2
+            _i+=1
+        done
+    fi
+    return 0
+}
+function prompt_sh
+{
+    if [ $# -gt 0 ]; then
+        color_echo_sh yellow $@
+    fi
+    return 0
+}
+function strlen_sh
+{
+    printf %s "$1" | wc -c
+}
+function substr_sh
+{
+    local -i _len=$(strlen_sh "$1")
+    local -i _start=$2
+    local -i _reslen=$_len-$_start
+    local -i _sublen=$3
+    [ -z "$3" ] && _sublen=$_reslen
+    [ $_sublen -lt 0 ] && _sublen+=$_reslen
+    printf %s "$1" | tail -c $_reslen | head -c $_sublen
+    printf %s " "
+}
+function input_sth_sh
+{
+    local _prompt='' _variable='' _m='' _non_empty=''
+    OPTIND=1
+    while getopts "p:v:n" _m;
+    do
+        case "$_m" in
+            p) _prompt=$OPTARG ;;
+            v) _variable=$OPTARG ;;
+            n) _non_empty='True' ;;
+            ?) ;&
+            *) return 1;;
+        esac
+    done
+    [ -z "$_variable" ] && return 0
+    [ -z "$_prompt" ] && _prompt='Please input: '
+    [ "$_variable" != "_input" ] && local _input=''
+    ! read -e -p "`prompt_sh "$_prompt"`" _input && return 1
+    until [ -z "$_non_empty" -o -n "$_input" ];
+    do
+        ! read -e -p "`prompt_sh "$_prompt"`" _input && return 1
+    done
+    [ -z "$_variable" ] && echo "$_input" && return 0;
+    local -n _ref="$_variable"
+    _ref=$_input
+    return 0
+}
+function checkyesno_sh
+{
+    local _choice=''
+    while [ "$_choice" != "yes" -a "$_choice" != "no" ];
+    do
+        read -e -p "`prompt_sh "$* (yes/no) "`" _choice
+    done
+    if [ $_choice == "no" ]; then
+        return 1
+    fi
+    return 0
+}
+function select_any_sh
+{
+    [ $# -lt 1 ] && error_sh "No option" && return 1
+    if [ $# -ge 2 ] && [ -n "${@: -1}" ]; then
+        local -n _ref=${@: -1}
+        [ "${@: -1}" != "_m" ] && local _m=''
+        [ "${@: -1}" != "_selected" ] && local _selected=''
+        [ "${@: -1}" != "_i" ] && local -i _i=1
+        [ "${@: -1}" != "_results" ] && local _results=''
+    else
+        local _m=''
+        local _selected=''
+        local -i _i=1
+        local _results=''
+    fi
+    for _m in "${@: 1:$(($#>1?($#-1):$#))}"
+    do
+        printf "%3s) %s\n" "$_i" "$_m" >&2
+        _i+=1
+    done
+    if [ -n "${@: -1}" ]; then
+        _ref=''
+        REPLY=0
+        while [ true ]
+        do
+            _results=''
+            input_sth_sh -p "#? " -v _selected
+            [ -z "$_selected" ] && _results=${@: 1:$(($#-1))} && break
+            _selected=${_selected//+( )/ }
+            _selected=${_selected//+( )-/-}
+            _selected=${_selected//-+( )/-}
+            [ "$_selected" == '*' ] && _selected=${@: 1:$(($#-1))} && break
+            for _m in ${_selected}
+            do
+                if [[ "$_m" =~ ^[1-9][0-9]*$ ]]; then
+                    [ "$_m" -ge $_i ] && continue
+                    _results+=${@: $_m:1}" "
+                elif [[ "$_m" =~ ^([1-9][0-9]*)-([1-9][0-9]*)$ ]]; then
+                    [ ${BASH_REMATCH[1]} -ge $_i ] && continue
+                    [ ${BASH_REMATCH[2]} -ge $_i ] && continue
+                    [ ${BASH_REMATCH[2]} -lt ${BASH_REMATCH[1]} ] && continue
+                    _results+=${@: ${BASH_REMATCH[1]}:$((${BASH_REMATCH[2]}-${BASH_REMATCH[1]}+1))}" "
+                fi
+            done
+            [ -n "$_results" ] && break
+        done
+        _results=${_results//+( )/ }
+        _results="${_results// /$'\n'}"
+        _results=$(echo "$_results" | sort | uniq)
+        if [ $# -ge 2 ]; then
+            _ref="$_results"
+        else
+            echo "$_results"
+        fi
+    fi
+    return 0
+}
+function select_one_sh
+{
+    [ $# -lt 1 ] && error_sh "No option" && return 1
+    if [ $# -ge 2 ] && [ -n "${@: -1}" ]; then
+        local -n _ref=${@: -1}
+        [ "${@: -1}" != "_m" ] && local _m=''
+        [ "${@: -1}" != "_selected" ] && local _selected=''
+        [ "${@: -1}" != "_i" ] && local -i _i=1
+    else
+        local _m=''
+        local _selected=''
+        local -i _i=1
+    fi
+    for _m in "${@: 1:$(($#>1?($#-1):$#))}"
+    do
+        printf "%3s) %s\n" "$_i" "$_m" >&2
+        _i+=1
+    done
+    if [ -n "${@: -1}" ]; then
+        _ref=''
+        REPLY=0
+        while [ true ]
+        do
+            input_sth_sh -n -p "#? " -v _selected
+            [[ ! "$_selected" =~ ^[1-9][0-9]*$ ]] &&  continue
+            REPLY=$_selected
+            [ $_selected -lt $(($#>1?$#:($#+1))) ] &&  break
+        done
+        if [ $# -ge 2 ]; then
+            _ref="${@: $_selected:1}"
+        else
+            echo "${@: $_selected:1}"
+        fi
+    fi
+    return 0
+}
+function hex2str_sh
+{
+    local _p
+    local -i _i
+    for _p
+    do
+        _i=0
+        _len=$(strlen_sh "$_p")
+        for (( _i=0; _i < _len; _i+=2 ))
+        do
+            printf "\\x${_p: _i:2}"
+        done
+        echo ''
+    done
+}
+function str2hex_sh
+{
+    local _p
+    for _p
+    do
+       printf '%s\n' $(echo $(printf %s "$_p" | od -A n -t x1) | sed 's/ //g; s/\(^.*$\)/\U\1/;')
+    done
+}
+function is_ip_sh
+{
+    [[ "$1" =~ ^[0-9]{1,3}(.[0-9]{1,3}){3} ]] && return 0
+    return 1
+}
+function xmlfmt_sh
+{ 
+    sed -n '{
+        H;
+        ${
+            x;
+            s/\n/ /g;
+            s/^\s*//g;
+            s/\s*$//g;
+            s/\(<\/[^<>]\+>\)/\1\n/g;s/>\s*</>\n</g;
+            s/>\n*$/>\n/;
+            p;
+        };
+    }' | 
+    sed '{
+        /^<[\x3F\x21]/b;
+        /^<[^\/][^<>]\+[^\/]>$/{
+            H;
+            g;
+            s/\n//;
+            h;
+            s/^\(\s*\).*$/    \1/;
+            x;
+        };
+        /.<\/\|\/>/{
+            H;
+            g;
+            s/\n//;
+            h;
+            s/^\(\s*\).*$/\1/;
+            x;
+        };
+        /^<\//{
+            x;
+            s/    $//;
+            G;s/\n//;
+            h;
+            s/^\(\s*\).*$/\1/;
+            x;
+        };
+        /^$/d;
+    }'
+}
+#**************************************************************************************
+#*
+#*                            HTTP Command
+#*
+#**************************************************************************************
+function httpclient_sh
+{
+    local _http_template="\
+%s %s HTTP/1.1\r\n\
+Host: %s\r\n\
+Connection: %s\r\n\
+Content-Type: %s\r\n\
+%sContent-Length: %d\r\n\r\n\
+%s"
+    local _auth_template="Authorization: Basic %s\r\n"
+    local -u _method=''
+    local _server='' _host='' _url='' _connection='Close' _payload='' _http_ticket='' _target_file=''
+    local _user='' _passwd='' _auth='' _sleep='' _debug_output='/dev/null' _content_type=''
+    local -i _content_len=0 _max_timeout=10
+    local -A _http_header
+    OPTIND=1
+    while getopts "t:h:m:u:p:U:P:k" _m
+    do
+        case "$_m" in
+            h) _server=$OPTARG;;
+            m) _method=$OPTARG;;
+            u) _url=$OPTARG;;
+            p) _payload=$OPTARG;;
+            U) _user=$OPTARG;;
+            P) _passwd=$OPTARG;;
+            k) _connection='keep-alive';;
+            d) _debug_output='/dev/stderr' ;;
+            t) _content_type=$OPTARG;;
+            ?) ;&
+            *)
+        esac
+    done
+    [ "$LEDM_SH_DEBUG" == "ON" ] && _debug_output='/dev/stderr'
+    [ -z "$_server" ] && input_sth_sh -n -p "IP: " -v _server
+    [ -z "$_url" ] && input_sth_sh -n -p "URL: " -v _url
+    [ -z "$_method" ] && select_one_sh GET PUT POST _method
+    [ -z "$_server" ] && select_one_sh ledm1 ledm2 eth _server
+    [ "$_server" == "eth" ] && input_sth_sh -n -p "IP: " -v _server
+    [ -z "$_url" ] && input_sth_sh -n -p "URL: " -v _url
+    if is_ip_sh "$_server"; then
+        _target_file=/dev/tcp/$_server/80
+        _host=$_server
+        _sleep='.2'
+        _max_timeout=100
+    else
+        _target_file=/dev/$_server
+        [ ! -c "$_target_file" ] && error_sh "usb host $_target_file doesn't exist" && return 1
+        _host=USB
+        _sleep='.5'
+        _max_timeout=10
+    fi
+
+    local _fd=0 _line='' _header='' _buf='' _http_body=''
+    local -l _lowercase_line='' _chunk='' _ret=0
+    local -i _timeout_cnt=0
+    ! exec {_fd}<>$_target_file && return 1
+    while [ true ]
+    do
+        _http_body=''
+        _content_len=$(strlen_sh "$_payload")
+        if [ -n "$_passwd" ]; then
+            _auth=$(printf %s "$_user:$_passwd" | base64)
+            _auth=$(printf "$_auth_template"Z "$_auth")
+            _auth=${_auth: 0:-1}
+        fi
+        _http_ticket=$(printf "$_http_template" "$_method" "$_url" "$_host" "$_connection" "$_content_type" "$_auth" $_content_len "$_payload")
+        [ -z "$_payload" ] && _http_ticket+=$'\n'
+        printf "%s\n------------------------------------------------\n" "$_http_ticket" >$_debug_output
+        ! printf %s "$_http_ticket" >&$_fd && return 1
+        _content_len=0
+        while [ true ]
+        do
+            _line=$(dd bs=1024 count=1 iflag=nonblock <&$_fd 2>/dev/null | sed -z '$az')
+            [ -n "$_line" ] && _line=${_line: 0:-1}
+            if [ -z "$_line" ]; then
+                sleep $_sleep
+                _timeout_cnt+=1 && [ $_timeout_cnt -gt $_max_timeout ] && error_sh "Time out" && break 2
+                continue
+            fi
+            printf %s "$_line" >$_debug_output
+            _buf+=$_line
+            while [ true ]
+            do
+                [[ ! ${_buf} =~ $'\n' ]] && break;
+                _line=$(printf %s "${_buf}Z" | sed -n '1{s/\r//g;p}')
+                _buf=$(printf %s "${_buf}Z" | sed '1d')
+                _buf=${_buf: 0:-1}
+                [ -z "${_line}" ] && break 2
+                if [[ "$_line" =~ ^HTTP/1\.[01][[:space:]]([1-9][0-9]{2})[[:space:]](.*)$ ]]; then
+                    _http_header["Response-Code"]=${BASH_REMATCH[1]}
+                    _http_header["Response-Message"]=${BASH_REMATCH[2]}
+                elif [[ "$_line" =~ ^([^:]+):[[:space:]]*(.+)$ ]]; then
+                    _http_header+=(["${BASH_REMATCH[1]}"]=${BASH_REMATCH[2]})
+                    _lowercase_line=${BASH_REMATCH[1]}
+                    [ "$_lowercase_line" == content-length ] && _content_len=${BASH_REMATCH[2]}
+                    [ "$_lowercase_line" == transfer-encoding ] && _chunk=${BASH_REMATCH[2]}
+                fi
+            done
+        done
+        for _header in "${!_http_header[@]}"
+        do
+            printf "%-20s: \"%s\"\n" "$_header" "${_http_header["$_header"]}" >$_debug_output
+        done
+        _timeout_cnt=0
+        if [ "${_chunk,,}" == chunked ]; then
+            local -i _chunk_len=0
+            local -i _rd_len=0
+            local _tmp=''
+            local -i _need_more_data=0
+            while [ true ]
+            do
+                if (( $_need_more_data )); then
+                    _line=''
+                    while [ -z "$_line" ]
+                    do
+                        _line=$(dd bs=1024 count=1 iflag=nonblock <&$_fd 2>/dev/null | sed -z '$az')
+                        [ -n "$_line" ] && _line=${_line: 0:-1}
+                        if [ -z "$_line" ]; then
+                            sleep $_sleep
+                            _timeout_cnt+=1 && [ $_timeout_cnt -gt $_max_timeout ] && error_sh "Time out" && break 3
+                        fi
+                    done
+                    _buf+=$_line
+                    _need_more_data=0
+                fi
+                if [ $_chunk_len -eq 0 ]; then
+                    _line=$(printf %s "${_buf}Z" | sed -n '1{s/^\(.*\r\)$/\1/p}')
+                    [ -z "$_line" ] && _need_more_data=1 && continue
+                    _buf=$(substr_sh "$_buf" $(($(strlen_sh "$_line")+1)))
+                    _buf=${_buf: 0:-1}
+                    _line=${_line: 0:-1}
+                    _chunk_len=0x$_line
+                    [ $_chunk_len -le 0 ] && break
+                    _chunk_len+=2
+                fi
+                _rd_len=$(strlen_sh "$_buf")
+                if [ $_rd_len -ge $_chunk_len ]; then
+                    _tmp=$(substr_sh "$_buf" 0 $((_chunk_len-2)))
+                    _tmp=${_tmp: 0:-1}
+                    _buf=$(substr_sh "$_buf" $_chunk_len)
+                    _buf=${_buf: 0:-1}
+                    _chunk_len=0
+                    #printf %s "$_tmp"
+                    _http_body+=$_tmp
+                elif [ $_rd_len -le $((_chunk_len-2)) ]; then
+                    #printf %s "$_buf"
+                    _http_body+=$_buf
+                    _chunk_len=$_chunk_len-$_rd_len
+                    _buf=''
+                    _need_more_data=1
+                else
+                    #printf %s "${_buf: 0:-1}"
+                    _http_body+=${_buf: 0:-1}
+                    _buf=${_buf: -1}
+                    _chunk_len=2
+                    _need_more_data=1
+                fi
+            done
+        elif [ $_content_len -gt 0 ]; then
+            #printf %s "$_buf"
+            _http_body+=$_buf
+            _content_len=$_content_len-$(strlen_sh "$_buf")
+            local -i _rd_len=$((_content_len>1024?1024:_content_len))
+            while [ $_content_len -gt 0 ]
+            do
+                _line=$(dd bs=1024 count=1 iflag=nonblock <&$_fd 2>/dev/null | sed -z '$az')
+                [ -n "$_line" ] && _line=${_line: 0:-1}
+                if [ -z "$_line" ]; then
+                    sleep $_sleep
+                    _timeout_cnt+=1 && [ $_timeout_cnt -gt $_max_timeout ] && error_sh "Time out $_content_len" && break
+                    continue
+                fi
+                #printf %s "$_line"
+                _http_body+=$_line
+                _content_len=$_content_len-$(strlen_sh "$_line")
+                _rd_len=$((_content_len>1024?1024:_content_len))
+            done
+        fi
+        if [ "${_http_header[Response-Code]}" == 202 ]; then
+            sleep .5
+            _http_header=()
+        elif [ "${_http_header[Response-Code]}" == 401 ]; then
+            _http_header=()
+            input_sth_sh -p "User name: " -v _user
+            input_sth_sh -p "Password: " -v _passwd
+        elif [ "${_http_header[Response-Code]}" == 403 ]; then
+            if [ "$LEDM_SH_DEBUG" == "ON" ]; then
+                echo curl -v -X "$_method" -d "$_payload" -k -H "$_auth" -w "%{http_code}\n" "https://$_ip$_url"
+                curl -v -X "$_method" -d "$_payload" -k -H "$_auth" -w "%{http_code}\n" "https://$_ip$_url"
+            else
+                echo curl -X "$_method" -d "$_payload" -k -H "$_auth" -w "%{http_code}\n" "https://$_ip$_url"
+                curl -X "$_method" -d "$_payload" -k -H "$_auth" -w "%{http_code}\n" "https://$_ip$_url"
+            fi
+            break;
+        elif [ "${_http_header[Response-Code]}" == 301 ]; then
+            if [[ "${_http_header[Location]}" =~ https:// ]]; then
+                if [ "$LEDM_SH_DEBUG" == "ON" ]; then
+                    echo curl -v -X "$_method" -d "$_payload" -k -H "$_auth" -w "%{http_code}\n" "${_http_header[Location]}"
+                    curl -v -X "$_method" -d "$_payload" -k -H "$_auth" -w "%{http_code}\n" "${_http_header[Location]}"
+                else
+                    echo curl -X "$_method" -d "$_payload" -k -H "$_auth" -w "%{http_code}\n" "${_http_header[Location]}"
+                    curl -X "$_method" -d "$_payload" -k -H "$_auth" -w "%{http_code}\n" "${_http_header[Location]}"
+                fi
+                break;
+            elif [ -n "${_http_header[Location]}" ]; then
+                _url=${_http_header[Location]}
+                _url=${_url##*\/\/}
+                _url='/'${_url#*\/}
+                _http_header=()
+            else
+                break;
+            fi
+        else
+            if [ "${_http_header[Response-Code]}" == 200 ]; then
+                _ret=0;
+                if [ -n "$_http_body" ]; then
+                    printf "%s\n" "$_http_body"
+                else
+                    printf "%s %s\n" "${_http_header[Response-Code]}" "${_http_header[Response-Message]}"
+                fi
+            else
+                printf "%s %s\n" "${_http_header[Response-Code]}" "${_http_header[Response-Message]}" >&2
+                _ret=1
+            fi
+            break
+        fi
+    done
+    printf "\n" >$_debug_output
+    [ $_fd -gt 0 ] && exec {_fd}>&- && exec {_fd}<&-
+    return $_ret
+}
+#**************************************************************************************
+#*
+#*                            Git Command
+#*
+#**************************************************************************************
+function gittop { git rev-parse --show-toplevel "$@"; }
+function gitwhat { git whatchanged --pretty=format:"%C(yellow)%h %ai %an<%ae>%s" "$@"; }
+function gitlog { git log --pretty=format:"%Cblue%h%Creset %ci %<(25)%an%<(31)%ae %s" "$@"; }
+function gitalog { git log --pretty=format:"%Cblue%h%Creset %ai %<(25)%an%<(31)%ae %s" "$@"; }
+function gittag { git describe --tags "$@"; }
+function gitswhat
+{
+    gitwhat -1 "$@" |
+    {
+        local _line=''
+        local -a _array=()
+        while [ true ]
+        do
+            read _line
+            [ -z "$_line" ] && break
+            [[ ! "$_line" =~ ^: ]] && printf "%s\n\033[m" "$_line" && continue
+            _array=($_line)
+            _line=$(gittop)/${_array[@]: -1}
+            printf "%s  " "${_array[*]: 0:5}"
+            _line=$(realpath "$_line")
+            #echo ${_line##$(pwd)}
+            relatedpath "$_line"
+        done
+    }
+}
+function _get_cur_branch
+{
+    if [ -n "$1" ]; then
+        [ "$1" != "_br" ] && local _br=''
+        local -n _ref="$1"
+        _ref=''
+    fi
+    _br=`git status -b | sed -n '1{s/^.*branch\s*\(.*\)\s*/\1/p}'`
+    [ -z $_br ] && return 1
+    [ -z "$1" ] && echo "$_br" && return 0
+    _ref=$_br
+    return 0
+}
+function _gitchanged
+{
+    local _list=''
+    if [ $# -le 1 ]; then
+        _list=$(git status -s | awk '{if($0 ~ /^'"$1"'\s*/) print $2;}')
+    else
+        shift;
+        _list=$(git diff --name-only $@ | sed '{s/^/realpath `git rev-parse --show-toplevel`\//;e
+            s/^/top=/;
+            s/$/;echo ${top##`pwd`\/}/;
+            e
+            }')
+    fi
+    local _slist=''
+    if [ -n "$_list" ]; then
+        if [ -t 1 ]; then
+            select_any_sh $_list ""
+        else
+            select_any_sh $_list _slist
+            echo "$_slist"
+        fi
+    fi
+}
+function gitchanged { _gitchanged '.[MD]' $@; }
+function gituntracked { _gitchanged '\?\?' $@; }
+function gitmodifiedandnew { _gitchanged '.[MD?]' $@; }
+function gitstaged { _gitchanged '[MAD]' $@; }
+function gitdiff
+{
+    local _newlist=''
+    local _list=$(gitchanged $@)
+    local l=''
+    for l in $_list
+    do
+        [ ! -f "$l" ] && continue
+        _newlist+=$l" "
+    done
+    if [ -t 1 ]; then
+        git difftool -y -t vimdiff $@ $_newlist
+    else
+        git diff $@ $_newlist
+    fi
+}
+function vigitchanged
+{
+    local _newlist=''
+    local _list=$(gitchanged $@)
+    local l=''
+    for l in $_list
+    do
+        [ ! -f "$l" ] && continue
+        _newlist+=$l" "
+    done
+    [ -n "$_newlist" ] && vi $_newlist
+}
+function gitcheckout
+{
+    git checkout $(gitchanged); git status
+}
+function gitadd
+{
+   git add $(gitmodifiedandnew); git status
+}
+function gitstatus
+{
+   git status
+}
+#**************************************************************************************
+#*
+#*                            Repo Command
+#*
+#**************************************************************************************
+function repolog { repo log --pretty=" %h %ai %an<%ae>%s " "$@"; }
+function _select_repo_branch
+{
+    local _branches=`repo branch | awk '{print "\""$0"\""}'`
+    [ -z "$_branches" ] && return 1
+    local -a _branch_array
+    eval "_branch_array=($_branches)"
+    if [ -n "$1" ]; then
+        [ "$1" != "_branch" ] && local _branch=''
+        local -n _ref="$1"
+        local _p
+        for _p in ${_branch_array[@]};
+        do
+            [ "$_p" == "$_ref" ] && return 0
+        done
+        _ref=''
+    fi
+    select_one_sh "${_branch_array[@]}" _branch
+    _branch=`echo ${_branch:3} | awk '{print $1}'`
+    [ -z $_branch ] && return 1
+    [ -z "$1" ] && echo "$_branch" && return 0
+    _ref=$_branch
+    return 0
+}
+function repocheckout
+{
+    local _branch=''
+    ! _select_repo_branch _branch && return 1
+    _get_cur_branch _cur_branch
+    [ "$_cur_branch" == "$_branch" ] && return 0
+    repo checkout $_branch
+    repo branch
+}
+function repoabandon
+{
+    local _branch=''
+    local _cur_branch=''
+    ! _select_repo_branch _branch && return 1
+    _get_cur_branch _cur_branch
+    while [ "$_cur_branch" == "$_branch" ];
+    do
+        prompt_sh "You are abandoning current branch, please checkout another branch first.\n"
+        repocheckout
+        _get_cur_branch _cur_branch
+    done
+    ! checkyesno_sh "Abandon $_branch?" && return 1
+    repo abandon $_branch
+    repo branch
+}
+#**************************************************************************************
+#*
+#*                            Perl Settings
+#*
+#**************************************************************************************
+#PATH="/home/baiou/perl5/bin${PATH:+:${PATH}}"; export PATH;
+#PERL5LIB="/home/baiou/perl5/lib/perl5${PERL5LIB:+:${PERL5LIB}}"; export PERL5LIB;
+#PERL_LOCAL_LIB_ROOT="/home/baiou/perl5${PERL_LOCAL_LIB_ROOT:+:${PERL_LOCAL_LIB_ROOT}}"; export PERL_LOCAL_LIB_ROOT;
+#PERL_MB_OPT="--install_base \"/home/baiou/perl5\""; export PERL_MB_OPT;
+#PERL_MM_OPT="INSTALL_BASE=/home/baiou/perl5"; export PERL_MM_OPT;
+#**************************************************************************************
+#*
+#*                            Compile Command
+#*
+#**************************************************************************************
+function board
+{
+    /projects/phx/tools/dartClient -a $1 && /projects/phx/tools/dartdecode -f trace.bin -o trace.raw && /projects/phx/tools/decode.py -d EXE/debuglist -e trace.raw -o $2
+    rm -rf trace.bin trace.raw
+}
+alias t1="/projects/phx/tools/dartClient -a 15.96.136.199 && /projects/phx/tools/dartdecode -f trace.bin -o trace.raw && /projects/phx/tools/decode.py -d EXE/debuglist -e trace.raw -o trace"
+function mkskyreach
+{
+    ./run ./phxmake -j10 Product=skyreach TargPair=gh201514-arm Flavor=debug
+}
+function mkkay
+{
+    ./run ./phxmake -j10 Product=kay_wifi TargPair=gh201514-arm Flavor=debug
+}
+function mkeyrie
+{
+    ./run ./phxmake -j10 Product=eyrie TargPair=gh201514-arm Flavor=debug
+}
+function mkgaheris
+{
+    ./run ./phxmake -j10 Product=gaheris TargPair=gh201514-arm Flavor=debug
+}
+function mkaurora
+{
+    ./phxmake -j10 Product=aurora_lite TargPair=gh201514-arm Flavor=debug
+}
+declare -A TARG_MAP=\
+(
+    ['arthur_base']='gh201514-arm'
+    ['arthur_base_mojo']='gh201514-arm'
+    ['arthur_base_tiny']='gh201514-arm'
+    ['arthur_wifi']='gh201514-arm'
+    ['arthur_wifi_mojo']='gh201514-arm'
+    ['asteroid']='gh517-arm'
+    ['avalon']='gh201514-arm'
+    ['bella']='gh201514-arm'
+    ['betel']='gh201514-arm'
+    ['bigeye']='gh201314pT2-arm'
+    ['bigeyeR']='gh201514-arm'
+    ['blackbird']='gh517-arm'
+    ['buck']='gh517-arm'
+    ['camelot']='gh201514-arm'
+    ['canary']='gh201514-arm'
+    ['caracal']='gh505-arm'
+    ['cheetah']='gh505-arm'
+    ['colossus']='gh201514-arm'
+    ['cougar']='gh505-arm'
+    ['cypressPro']='gh517-arm'
+    ['dorado']='gh201314pT2-arm'
+    ['doradoR']='gh201514-arm'
+    ['dynasty']='gh517-arm'
+    ['epic']='gh517-arm'
+    ['eyrie']='gh201514-arm'
+    ['gawain']='gh201514-arm'
+    ['gawain_base']='gh201514-arm'
+    ['gawain_mojo']='gh201514-arm'
+    ['gawain_swan']='gh201514-arm'
+    ['gemini']='gh201314pT2-arm'
+    ['gemini_lite']='gh201314pT2-arm'
+    ['homer2.0']='gh517-arm'
+    ['homer']='gh517-arm'
+    ['lark']='gh201514-arm'
+    ['lark_lite']='gh201514-arm'
+    ['lark_lite_thorm']='gh201514-arm'
+    ['lonepine']='gh505-coldfire'
+    ['marlin']='gh201314pT2-arm'
+    ['marlinR']='gh201514-arm'
+    ['meissa']='gh201514-arm'
+    ['meissa_lite']='gh201514-arm'
+    ['moon']='gh517-arm'
+    ['nebula']='gh201314pT2-arm'
+    ['nebulaR']='gh201514-arm'
+    ['neptune']='gh201314pT2-arm'
+    ['nile']='gh201514-arm'
+    ['orion']='gh201314pT2-arm'
+    ['puma']='gh517-arm'
+    ['pyramid']='gh201514-arm'
+    ['QPI_arthur_base']='gh201514-arm'
+    ['QPI_arthur_wifi']='gh201514-arm'
+    ['QPI_gawain']='gh201514-arm'
+    ['saiph']='gh201514-arm'
+    ['sanya']='gh517-arm'
+    ['seagull']='gh201514-arm'
+    ['skyreach']='gh201514-arm'
+    ['sun']='gh517-arm'
+    ['swan']='gh201514-arm'
+    ['switchback']='gh517-arm'
+    ['taishan']='gh517-arm'
+    ['thunderbolt']='gh517-arm'
+    ['wolverine']='gh201514-arm'
+    ['zenith']='gh201514-arm'
+)
+function __mkdbg
+{
+    local _origdir=$(pwd);
+    while [ ! -f phxmake ]
+    do
+        if [ $(pwd) ==  "/" ]; then
+            break;
+        fi
+        cd ..;
+    done
+    [ ! -f phxmake ] &&  error_sh "no phxmake" && return 1
+    local _product=$1; shift;
+    local _flavor=$1; shift;
+    local _targpair=${TARG_MAP[$_product]};
+    local _exedir="exe/gen/$_product/linux-x86/$_targpair/$_flavor"
+    [ -z $_targpair ] && error_sh "No product \"$_product\"!!!" && return 1
+    [ -d $_exedir ] && rm -rf $_exedir/*
+    ./phxmake -j10 Product=$_product TargPair=${TARG_MAP[$_product]} Flavor=$_flavor $@;
+    if [ -f EXE/$_product.bbz ]; then
+        download -k -ifs -b0 EXE/$_product.bbz -o EXE/$_product.rfu
+        printf "\e[1;31;40m------Success------\e[m\n" > /dev/stderr
+        cd $_origdir;
+        return 0
+    elif [ -f EXE/$_product.bbd ]; then
+        download -n -b0 EXE/$_product.bbd -o EXE/$_product.rfu
+        printf "\e[1;31;40m------Success------\e[m\n" > /dev/stderr
+        cd $_origdir;
+        return 0
+    else
+        printf "\e[1;31;40m------Fail------\e[m\n" > /dev/stderr
+        cd $_origdir;
+        return 1
+    fi
+}
+function mkdbg
+{
+    local _product=$1; shift;
+    __mkdbg $_product debug $@
+}
+function mkndbg
+{
+    local _product=$1; shift;
+    __mkdbg $_product no_debug $@
+}
+complete -W "${!TARG_MAP[*]}" mkdbg
+complete -W "${!TARG_MAP[*]}" mkndbg
+function mkmulti
+{
+    local _product _failed_products _all_products=$@ _build=true
+    while [ $_build == true -a -n "$_all_products" ]; 
+    do
+        for _product in $_all_products
+        do
+            prompt_sh "####################### Start building $_product #######################";
+            ! mkdbg $_product && error_sh "Build $_product failed!!!" && _failed_products+="$_product ";
+        done
+        if [ -z "$_failed_products" ]; then
+            prompt_sh "####################### All buildings succeeded #######################";
+            prompt_sh "$_all_products";
+            _build=false
+        else
+            error_sh "Building for $_failed_products failed!!!!!!!!!!!!!"
+            if ! checkyesno_sh "Re-build failed product?";then
+                _build=false;
+            else
+                _all_products=''
+                select_any_sh $_failed_products _all_products;
+            fi
+        fi
+    done
+}
+complete -W "${!TARG_MAP[*]}" mkmulti
+function mkapl { mkmulti arthur_base arthur_wifi gawain wolverine colossus skyreach eyrie lark_lite; }
+function phxbind
+{
+    [ $# -eq 0 ] && echo "$FUNCNAME <product name> <bind name>" && return 0;
+    find $(gittop) -name GNUmakefile.${1,,} | xargs sed -i 's/^\(\s*'$2'\s*:=\s*\).*$/\1BIND/;'
+}
+function phxunbind
+{
+    [ $# -eq 0 ] && echo "$FUNCNAME <product name> <bind name>" && return 0;
+    find $(gittop) -name GNUmakefile.${1,,} | xargs sed -i 's/^\(\s*'$2'\s*:=\s*\).*$/\1NO_BIND/;'
+}
+PHX_BINDS=''
+function _phx_bind_comp
+{
+    COMPREPLY=()
+    if [ $COMP_CWORD -eq 1 ]; then
+        COMPREPLY=($(compgen -W "${!TARG_MAP[*]}" "${2,,}"))
+    elif [ $COMP_CWORD -eq 2 ]; then
+        [ -z "$PHX_BINDS" ] &&\
+        PHX_BINDS=$(find $(gittop) -name GNUmakefile.${COMP_WORDS[1],,} | xargs sed -n 's/^\s*\(\w\+\)\s*:=\s*\(\(NO_\)\?BIND\)\s*$/\1 \2/p' | sort)
+        COMPREPLY=($(compgen -W "$PHX_BINDS" "${2^^}"))
+    fi
+}
+complete -F _phx_bind_comp phxbind phxunbind
+#**************************************************************************************
+#*
+#*                            Printer Command
+#*
+#**************************************************************************************
+function downbbz { download -k -ifs -b0 -p "$@"; }
+function downbbd { download -n -p "$@"; }
+function downbbz2spiphx { download -ifs -b1 -p "$@"; }
+function downbbd2spiphx { download -ifs -b1 -p "$@"; }
+function downbbz2spiapl { download -k -ifs -b1 -p "$@"; }
+function downbbz2usb { sudo /projects/phx/tools/download -k -ifs -b0 $1 -o /dev/usb/lp0; }
+complete -F _ip_comp -o default downbbz downbbd downbbz2spiphx downbbd2spiphx downbbz2spiapl
+function downrfu { cat $1 >/dev/usb/lp0; }
+function chgmac { download -m$1 -o /dev/usb/lp0; }
+function tdbg
+{
+    local _ip=$1 _cmd='' _fd=0 _line='' _response='' _sysname=''
+    ! is_ip_sh "$_ip" && error_sh "Not an IP <$_ip>" && return 1
+    _sysname=$(tdbgexec_sh "$_ip" 'systemApp/GetSystemName' 2>/dev/null)
+    if ! exec {_fd}<>/dev/tcp/$_ip/23000; then
+        ledm_telnet on "$_ip" >/dev/null
+        ! exec {_fd}<>/dev/tcp/$_ip/23000 && error_sh "Fail to connect $_ip:23000!" && return 1
+    fi
+    ! read -u $_fd -d '>' _line && exit 
+    printf "%s" "$_line" | sed '/telnet_debug/d'
+    while input_sth_sh -p "$_ip/$_sysname telnet_debug>"  -v _cmd -n
+    do
+        echo "$_cmd" >&$_fd
+        while true
+        do
+            ! read -u $_fd -t 5 -d '>' _line && break 2
+            _response+=$_line
+            [[ "$_response" =~ .*telnet_debug.* ]] && break
+        done
+        echo "$_response" | sed '${/telnet_debug/d}'
+        _response=''
+    done
+    echo ''
+    exec {_fd}>&-
+    exec {_fd}<&-
+    return 0
+}
+function tdbgexec_sh
+{
+    local _ip=$1; shift
+    local _cmd_str=$* _cmd='' _fd=0 _line='' _response=''
+    local -a _cmd_list=()
+    ! is_ip_sh "$_ip" && error_sh "Not an IP <$_ip>" && return 1
+    _cmd_str=${_cmd_str##*( )}
+    _cmd_str=${_cmd_str%%*( )}
+    [ -z "$_cmd_str" ] && return 0
+    if ! exec {_fd}<>/dev/tcp/$_ip/23000; then
+        ledm_telnet on "$_ip" >/dev/null
+        ! exec {_fd}<>/dev/tcp/$_ip/23000 && error_sh "Fail to connect $_ip:23000!" && return 1
+    fi
+    ! read -u $_fd -t 5 -d '>' _line && return 1
+    while [ -n "$_cmd_str" ]
+    do
+        _cmd=${_cmd_str%%,*}
+        _cmd_str=${_cmd_str#$_cmd}
+        _cmd=${_cmd##*( )}
+        _cmd=${_cmd%%*( )}
+        _cmd_str=${_cmd_str##*(,)}
+        _cmd_str=${_cmd_str##*( )}
+        _cmd_str=${_cmd_str%%*( )}
+        [ -z "$_cmd" ] && continue
+        echo "$_cmd" >&$_fd
+        while true
+        do
+            ! read -u $_fd -d '>' _line && break 2
+            _response+=$_line
+            [[ "$_response" =~ .*telnet_debug.* ]] && break
+        done
+        echo "$_response" | sed '${/telnet_debug/d}'
+        _response=''
+    done
+    exec {_fd}>&-
+    exec {_fd}<&-
+    return 0
+}
+function tdcrc_on { tdbgexec_sh "$1" 'cd /print/debug; SilentCRCMode true'; }
+function tdcrc_off { tdbgexec_sh "$1" 'cd /print/debug; SilentCRCMode false'; }
+function tdsigcheck_cancel { tdbgexec_sh "$1" 'systemApp/set eSystemDLValidationFailureAction 0'; }
+function tdsigcheck_prompt { tdbgexec_sh "$1" 'systemApp/set eSystemDLValidationFailureAction 1'; }
+complete -F _ip_comp -o default tdbg tdcrc_on tdcrc_off tdbgexec_sh tdsigcheck_cancel tdsigcheck_prompt
+function _downdaily
+{
+    local _type=$1 _ip=$2 _product_folder=$3 _product=${3%%.*} _file=''
+    _product=${_product%%R}
+    _product=${_product%%[0-9]*}
+    #_product=${_product%%*([0-9])}
+    ! is_ip_sh "$_ip" && error_sh "Not an IP!!!" && return 1
+    case "$_type" in
+        rfu)
+            _file=$(find "/projects/phx/daily/$_product_folder" -maxdepth 1 -name "lj*.rfu")
+            [ -z "$_file" ] && error_sh "No rfu found." && return 1;
+            downrfu $_file
+            ;;
+        bbd)
+            _file="/projects/phx/daily/$_product_folder/$_product.$_type"
+            [ ! -e "$_file" ] && error_sh "$_file doesn't exists." && return 1;
+            echo downloading $_file to $_ip
+            downbbd $_ip $_file
+            ;;
+        bbz)
+            _file="/projects/phx/daily/$_product_folder/$_product.$_type"
+            [ ! -e "$_file" ] && error_sh "$_file doesn't exists." && return 1;
+            echo downloading $_file to $_ip
+            downbbz $_ip $_file
+            ;;
+        bbd2spiphx)
+            _file="/projects/phx/daily/$_product_folder/$_product.${_type%%2*}"
+            [ ! -e "$_file" ] && error_sh "$_file doesn't exists." && return 1;
+            echo downloading $_file to $_ip
+            downbbd2spiphx $_ip $_file
+            ;;
+        bbz2spiphx)
+            _file="/projects/phx/daily/$_product_folder/$_product.${_type%%2*}"
+            [ ! -e "$_file" ] && error_sh "$_file doesn't exists." && return 1;
+            echo downloading $_file to $_ip
+            downbbz2spiphx $_ip $_file
+            ;;
+        bbz2spiapl)
+            _file="/projects/phx/daily/$_product_folder/$_product.${_type%%2*}"
+            [ ! -e "$_file" ] && error_sh "$_file doesn't exists." && return 1;
+            echo downloading $_file to $_ip
+            downbbz2spiapl $_ip $_file
+            ;;
+        *) ;;
+    esac
+}
+function downdailybbd { _downdaily bbd "$@"; }
+function downdailybbz { _downdaily bbz "$@"; }
+function downdailybbd2spiphx { _downdaily bbd2spiphx "$@"; }
+function downdailybbz2spiphx { _downdaily bbz2spiphx "$@"; }
+function downdailybbz2spiapl { _downdaily bbz2spiapl "$@"; }
+function downdailyrfu { _downdaily rfu "192.168.1.1" "$@"; }
+function _down_daily_comp
+{
+    COMPREPLY=()
+    if [[ "$1" =~ rfu ]]; then
+        if [ $COMP_CWORD -eq 1 ]; then
+            COMPREPLY=($(compgen -W "$(ls /projects/phx/daily/)" "$2"))
+        fi
+    else
+        if [ $COMP_CWORD -eq 1 ]; then
+            COMPREPLY=($(compgen -W "$ALL_IPS" "$2"))
+        elif [ $COMP_CWORD -eq 2 ]; then
+            COMPREPLY=($(compgen -W "$(ls /projects/phx/daily/)" "$2"))
+        fi
+    fi
+}
+complete -F _down_daily_comp downdailybbz downdailybbd downdailyrfu downdailybbd2spiphx downdailybbz2spiphx downdailybbz2spiapl
+#**************************************************************************************
+#*
+#*                            Trace Command
+#*
+#**************************************************************************************
+function chgckpt
+{
+    local _ckpt='' _mkfile='' _m='' _sed_cmd='' _level='' _target=''
+    OPTIND=1
+    while getopts 'hf:c:' _m;
+    do
+        case "$_m" in
+            f) _target+=" $OPTARG" ;;
+            c) _ckpt=$OPTARG ;;
+            h) echo "$FUNCNAME -f <all/xxx.c/xxx.cpp> -c [abc] -h" && return 0 ;;
+            *) return 1 ;;
+        esac
+    done
+    if [ $# -gt 0 ]; then
+        case "$_ckpt" in
+            *a*) _level+=" -DRT_A" ;;&
+            *b*) _level+=" -DRT_B" ;;&
+            *c*) _level+=" -DRT_C" ;;&
+            *d*) _level+=" -DRT_D" ;;&
+        esac
+        [ -z "$_level" ] && error_sh "Wrong checkpoint $_ckpt." && return 1
+        if [[ "${_target,,}" =~ ^[[:space:]]*all[[:space:]]*$ ]]; then
+            _sed_cmd="s/^\(DbgDefaultOptions:=\).*$/\1$_level/; s/^\(.*DbgOptions:=\$(DbgDefaultOptions)\).*$/\1/;"
+        else
+            for _m in $_target
+            do
+                if [ -f "$_m" ]; then
+                    _sed_cmd+="s/^\($(basename $_m): *DbgOptions:=\$(DbgDefaultOptions)\).*$/\1$_level/;"
+                else
+                    error_sh "Wrong file $_m." && return 1;
+                fi
+            done
+        fi
+    fi
+    _mkfile=$(find -name GNUmakefile.dbg | sed -n '/\/obj\//d; p')
+    for _m in $_mkfile
+    do
+        [ $# -gt 0 ] && sed -i "$_sed_cmd" $_m
+        echo '--------------------------'
+        echo $_m
+        cat $_m
+    done
+}
+function snooptrace { [ -n "$2" ] && parseTrace.pl "$1" 4k 512 spiClks > "$2"; }
+function decodeassert
+{
+    [ $# -eq 0 ] && echo "$FUNCNAME <map> <trace>" && return 0;
+    local _trace_file=$2 _map_file=$1
+    sed -n 's/^.*writeFlash : \(0x.*\)$/\1/p' "$_trace_file" >/tmp/addr
+    decodeStack.py -m "$_map_file" -i /tmp/addr -o /work/temp/err >/dev/null
+    cat /work/temp/err
+}
+function decodecallstack
+{
+    [ $# -eq 0 ] && echo "$FUNCNAME <map> <trace>" && return 0;
+    local _trace_file=$2 _map_file=$1
+    #sed -n '/^.*TraceCallStack\s*:\s*Callstack/b; s/^.*TraceCallStack\s*:\s*\(\S.*\)$/\1/p' "$_trace_file" | awk '{for(i=1;i<=NF;++i){printf("0x%s\n", $i);}}' >/tmp/addr
+    sed -n 's/^.*TraceCallStack\s*:\s*\(\S.*\)$/\1/p' "$_trace_file" | awk '/Callstack/{print} $0 !~ /Callstack/{for(i=1;i<=NF;++i){printf("%s\n", $i);}}' >/tmp/addr
+    decodeStack.py -m "$_map_file" -i /tmp/addr -o /work/temp/err >/dev/null
+    cat /work/temp/err
+}
+function _trace_ctrl { httpclient_sh -m get -t 'text/plain' -k -h "$1" -u "/cgi-bin/handleReq/$2?_=1"; }
+function trace_start { [ $# -eq 0 ] && echo "$FUNCNAME <IP>" && return 0; _trace_ctrl "$1" "start"; }
+function trace_stop { [ $# -eq 0 ] && echo "$FUNCNAME <IP>" && return 0; _trace_ctrl "$1" "stop"; }
+function trace_flush { [ $# -eq 0 ] && echo "$FUNCNAME <IP>" && return 0; _trace_ctrl "$1" "flush"; }
+function _trace_cfg
+{
+    httpclient_sh -m post -k -h "$1" -t 'application/json' -u \
+        "/cgi-bin/handleJson/setShrMemFull" \
+        -p \
+        "{
+            \"overwriteBufferWhenFull\":1,
+            \"dumpMemorySnoops\":0,
+            \"enableStreaming\":$2,
+            \"startTriggerSet\":0,
+            \"stopTriggerSet\":0,
+            \"triggerArmed\":0,
+            \"flushOnPwrup\":0,
+            \"dmaBufferSize\":$3
+        }"
+}
+function trace_open_stream { [ $# -eq 0 ] && echo "$FUNCNAME <IP>" && return 0; _trace_cfg "$1" 1 67043328; }
+function trace_close_stream { [ $# -eq 0 ] && echo "$FUNCNAME <IP>" && return 0; _trace_cfg "$1" 0 838041600; }
+function trace_decode
+{
+    [ $# -eq 0 ] && echo "$FUNCNAME <debuglist> <IP>" && return 0;
+    local _df _ip _data _id _s _fd _t _lt=0
+    local -A _dl _dp _pa _pc
+    local -i _cnt=0 _d=0 _nt=1 _rd=0
+    #full time 274877.906944
+    #CKPTREG=704000c* VIDREG=7040008* VREG=7040004* NULL=00000000
+    _df=$1
+    _ip=$2
+    [ ! -f "$_df" ] && error_sh "$_df does't exist" && return 1
+    [ -z "$_ip" ] && [ -t 0 ] && error_sh "Can't read from terminal" && return 1
+    ! exec {_fd}<$_df && return 1
+    echo Reading debuglist $_df... >&2
+    while true
+    do
+        ! read -r -u $_fd _id _data && break
+        [ -n "${_dl["$_id"]}" ] && error_sh "Same id $_id" 2>/dev/null && continue
+        _data=${_data#*components/}
+        _dl[$_id]="${_data//\\/\\\\}"
+        _dp[$_id]=1
+        _cnt+=1
+    done
+    exec {_fd}<&-
+    ! is_ip_sh "$_ip" && error_sh "Not an IP!!!" && return 1
+    echo $_cnt lines >&2
+    echo Read ${#_dl[@]} records >&2
+    #! start_trace $_ip && return 1
+    trap "trace_close_stream $_ip" SIGINT
+    trap "trace_close_stream $_ip" SIGQUIT
+    trap "trace_close_stream $_ip" SIGILL
+    trap "trace_close_stream $_ip" SIGTERM
+    #sleep 1
+    #! open_stream $_ip && return 1
+    ! exec {_fd}</dev/tcp/$_ip/1600 && error_sh "Connect $_ip:1600 failed." && return 1
+    echo Decoding... >&2
+    while true
+    do
+        _data=`dd skip=4 bs=60 count=1 iflag=skip_bytes 2>/dev/null <&$_fd | od --endian=big -A n -t x4 -v 2>/dev/null`
+        [ -z "$_data" ] && break
+        _t=${_data: 1:8}
+        _data=${_data: 10}
+        for _m in $_data
+        do
+            (( _d=0xffff00c0&0x$_m, _d=(_d==0x704000c0?1:(_d==0x70400080?2:(_d==0x70400040?3:0))), _d>0 )) && _nt=_d && continue
+            case $_nt in
+                1)
+                    [ $_m == 00000000 ] && break
+                    _id=$_m
+                    [ -z "${_dl[$_id]}" ] && error_sh "<<< Unknown id $_m" && continue
+                    [ "${_dp[$_id]}" == 1 ] && _dp[$_id]=$(printf "%s" "${_dl[$_id]}" | sed -n 's/%%//g; s/[^%]*%[0-9\.]*h*\(\w\)[^%]*/\1/gp')
+                    if [ -z "${_dp[$_id]}" ]; then
+                        (( 0x$_t < 0x$_lt )) && _rd+=1
+                        _s=$(echo "scale=10; a=$((0x$_t)); a/=15625; a+=($_rd*274877.906944); if(a>1000) {a/=1000; print a,\" s\";}else print a,\" ms\";" | bc)
+                        _lt=$_t
+                        printf "%10.6f %s ${_dl[$_id]}\n" $_s
+                    else
+                        _pc[$_id]=0
+                    fi
+                ;;
+                2)
+                    [ $_m == 00000000 ] && break
+                    _id=$_m
+                ;;
+                3)
+                    _nt=0
+                    [ -z "${_pc[$_id]}" ] && error_sh "<<< Extra Parameter $_m" && echo "${_dl[$_id]}" && continue
+                    _pt=${_dp[$_id]: ${_pc[$_id]}:1}
+                    case "$_pt" in
+                        f)
+                            _pa[$_id]+=$(printf "\x${_m: 0:2}\x${_m: 2:2}\x${_m: 4:2}\x${_m: 6:2}" | od --endian=big -A n -t fF)$'\t'
+                            let _pc[$_id]+=1
+                        ;;
+                        s)
+                            if [ $_m == 00000000 ]; then
+                                _pa[$_id]+=$'\t'
+                                let _pc[$_id]+=1
+                            else
+                                eval "_s=\$'\x${_m: 6}'"
+                                [ "$_s" == $'\t' ] &&  _s=' '
+                                _pa[$_id]+="$_s"
+                            fi
+                        ;;
+                        *)
+                            _d=0x$_m
+                            (( _d=_d&0x80000000?(_d|0xffffffff00000000):_d ))
+                            _pa[$_id]+=$_d$'\t'
+                            let _pc[$_id]+=1
+                        ;;
+                    esac
+                    if [ ${_pc[$_id]} -ge ${#_dp[$_id]} ]; then
+                        (( 0x$_t < 0x$_lt )) && _rd+=1
+                        _s=$(echo "scale=10; a=$((0x$_t)); a/=15625; a+=($_rd*274877.906944); if(a>1000) {a/=1000; print a,\" s\";}else print a,\" ms\";" | bc)
+                        _lt=$_t
+                        printf "%s" "${_pa[$_id]}" | xargs -d $'\t' printf "%10.6f %s ${_dl[$_id]}\n" $_s
+                        unset _pc[$_id]
+                        unset _pa[$_id]
+                    fi
+                ;;
+                *) break ;;
+            esac
+        done
+    done
+    exec {_fd}<&-
+}
+function dart_sh { trace_open_stream "$2"; trace_decode "$1" "$2"; trace_close_stream "$2"; }
+#**************************************************************************************
+#*
+#*                            Test Command
+#*
+#**************************************************************************************
+function _temrun
+{
+    local _test;
+    if [ -z "$2" ]; then
+        local _test_list=$(sed -n '/^#/!{/^\s*$/!{s/^\s*\(\S\+\);.*$/\1/p}}' $1)
+        [ -n "$_test_list" ] && select_one_sh $_test_list ALL QUIT _test
+        if [ "$_test" == "QUIT" ]; then
+            return
+        elif [ "$_test" == "ALL" ]; then
+            tem --testspl $1
+        elif [ -n "$_test" ]; then
+            tem --testspl $1 $_test
+        fi
+    else
+        tem --testspl $@
+    fi
+}
+alias tem='_temrun'
+function _tem_comp
+{
+    local _test_list='' _test_file=${COMP_WORDS[1]}
+    COMPREPLY=()
+    [ $COMP_CWORD -le 1 ] && return 0
+    if [[ "$_test_file" == *.tst ]]; then
+        _test_list=$(sed -n '/^#/!{/^\s*$/!{s/^\s*\(\S\+\);.*$/\1/p}}' $_test_file 2>/dev/null)
+        COMPREPLY=($(compgen -W "$_test_list" "$2"))
+    fi
+}
+complete -F _tem_comp -o default tem
+function temconfigproduct
+{
+    local _temrc=~/.temconfig/temrc _test_root='' _product_config_path='' _ip=$1 _system_name='' _m=''
+    local _test_product=''
+    local -a _product_names
+    if [ -n "$_ip" ]; then
+        ! is_ip_sh "$_ip" && error_sh "Not an IP $_ip" && return 1
+        _test_root=$(sed -n 's/^\s*TestEnvironmentRoot:\s*\(.*\)\s*$/\1/p' "$_temrc" 2>/dev/null)
+        _system_name=$(tdbgexec_sh "$_ip" 'systemApp/GetSystemName' 2>/dev/null)
+        _system_name=${_system_name%%_*}
+        _product_config_path=${_test_root%%\/}
+        _product_config_path=${_product_config_path%%*( )}
+        _product_config_path+=/phx_test/productconfig
+        _product_names=($(ls -d $_product_config_path/*/ | sort | uniq))
+        _product_names=(${_product_names[@]#*productconfig/})
+        _product_names=(${_product_names[@]%/})
+        for _m in ${!_product_names[@]}
+        do
+            if [[ ! ${_product_names[$_m],,} =~ ${_system_name,,} ]]; then
+                unset _product_names[$_m]
+            fi
+        done
+        select_one_sh "${_product_names[@]}" _test_product
+        sed -i 's/^\s*\(ProductName:\).*$/\1'"$_test_product"'/; s/^\s*\(Target1:\).*$/\1'"$_ip"'/;' "$_temrc"
+    fi
+    sed -n '/^\s*ProductName:/p;/^\s*Target1/p' "$_temrc"
+}
+complete -F _ip_comp -o default temconfigproduct
+function temconfigroot
+{
+    local _temrc=~/.temconfig/temrc _test_root=$(gittop)
+    if [ -d "$_test_root/phx_test" ]; then
+        _test_root=${_test_root//\//\\/}
+        sed -i 's/^\(\s*TestEnvironmentRoot:\s*\).*\s*$/\1'"$_test_root"'/' "$_temrc"
+        sed -n '/^\(\s*TestEnvironmentRoot:\s*\).*\s*$/p' "$_temrc"
+    fi
+}
+#**************************************************************************************
+#*
+#*                            Convenient Command
+#*
+#**************************************************************************************
+function delswp { rm -f `find $1 -regex ".*\.swp$"` "$@"; }
+function genctags { ctags -R --c++-kinds=+p --fields=+iaS --extra=+q "$@"; }
+function delgen
+{
+    local name=$1
+    if [ -z "$name" ]; then
+        name='gen'
+        [[ $(getBranch) != "no branch" ]] && rm -rf `find . -name $name`
+    else
+        [[ $(getBranch) != "no branch" ]] && rm -rf `find . -name $name | sed -n '/\/gen\//p'`
+    fi
+}
+complete -W "${!TARG_MAP[*]}" delgen
+function sslpem
+{
+    openssl pkcs12 -in $1 -nodes -out $2
+}
+function netif { ifconfig | sed -n 's/^\(\w\+\) .*$/\1/; h; :loop; { n; /inet addr/{s/^\s\+//;s/inet addr/inet_addr/;H;}; /^\s*$/{z;x;/inet_addr/!b;s/\n/ /g;s/\s\+/ /g;s/ /\//g;p;b;}; bloop;}'; }
+function netcap
+{
+    local _capfile=/work/temp/$$_$RANDOM.pcapng _intf=$1
+    [ -z "$_intf" ] && select_one_sh $(netif) _intf && _intf=${_intf%%/*}
+    touch $_capfile
+    sudo chown $(echo $(groups $(whoami))|sed 's/\s//g') $_capfile
+    sudo chmod 666 $_capfile
+    sudo dumpcap -q -i "$_intf" -w $_capfile
+    chmod 555 $_capfile
+    echo $_capfile
+}
+function gencscope
+{
+    find $1 -regex ".*\.\(h\|c\|cpp\|htm\|html\|js\|css\)$"  | sed -n '/.*\/gen\/.*/d ; p' > cscope.files
+    cscope -Rbkq
+}
+function countdiff
+{
+    local x = `git diff $1 $2 | grep '^-[^-\s\t]\|^-[\s\t]\s*\S\+' | wc -l`; 
+    local y = `git diff $1 $2 | grep '^+[^+\s\t]\|^+[\s\t]\s*\S\+' | wc -l`;
+    echo $1 -> $2
+    echo $1: $x
+    echo $2: $y
+}
+function loccount
+{
+    awk 'BEGIN{FS=","}{if($1~/^c[A-Z]/){for(i=2;i<NF;i++){printf $i} print ""}}' $1 | sed 's/^\s*"//;s/"\s*$//' | wc -w
+}
+function relatedpath
+{
+    local _path=$(realpath $1) _rel_path='' _pwd_path=(${PWD//\// })
+    local _array_path=(${_path//\// })
+    local -i _c=0;
+    while [ "${_array_path[$_c]}" == "${_pwd_path[$_c]}" ];
+    do
+        _c=$_c+1
+    done
+    if [ -z "${_pwd_path[$_c]}" ]; then
+        _rel_path+=./$(echo ${_array_path[@]: $_c} | sed 's/ /\//g;')
+    else
+        _pwd_path=(${_pwd_path[@]: $_c})
+        _rel_path+=$(echo ${_pwd_path[@]/*/..} | sed 's/ /\//g;')/
+        _rel_path+=$(echo ${_array_path[@]: $_c} | sed 's/ /\//g;')
+    fi
+    echo $_rel_path
+}
+#**************************************************************************************
+#*
+#*                            Legacy Command
+#*
+#**************************************************************************************
+#  generate strip image --------
+#  python openCols_c2.py -n $file > /dev/null
+#  
+#  decode trace ------------
+#  decode.py -e trace.raw -d $debuglist -o $destpath >&2
+#  dartClient.py -a $1 >2
+#  dartdecode -f trace.bin >&2
+#  decode.py -e trace.raw -d $debuglist -o $name >&2
+#  
+#  decode snooptrace ----------
+#  dartClient.py -a $1
+#  dartdecode -f trace.bin
+#  decode14.py -s -m $mapfile -e $dir/trace.raw -o $destpath
+#**************************************************************************************
+#*
+#*                            Final Settings
+#*
+#**************************************************************************************
+if [[ ${HOSTNAME%%.*} == plslx112 ]]; then
+    function dobackup
+    {
+        local backupdir=/work/backup/`randomname`/
+        mkdir -p $backupdir
+        cp -f ~/.bashrc $backupdir
+        cp -f ~/.vimrc $backupdir
+        cp -rf ~/bin $backupdir
+        cp -rf ~/.vim $backupdir
+        cp -rf ~/.ssh $backupdir
+    }
+#**************************************************************************************
+#*
+#*                            Python Settings
+#*
+#**************************************************************************************
+#export PYTHONPATH=$PYTHONPATH:/work/sandbox/apollotest-core/:~/bin
+    #export PYTHONPATH=/work/sandbox/apollotest-core/tem/Lib:${PYTHONPATH}
+    #export PYTHONPATH=/work/sandbox/apollotest-core:~/bin:/projects/phx/tools/pylib:${PYTHONPATH}
+#**************************************************************************************
+#*
+#*                            Sandbox command
+#*
+#**************************************************************************************
+    export -A work_paths=()
+    work_paths[Apollo]=/work/apollowork/apollo-core/scm/phx/components/
+    work_paths[ApolloTest]=/work/apollowork/apollotest-core/phx_test/
+    work_paths[Knights15]=/work/sandbox/knights15/apollo-core/scm/phx/components/
+    work_paths[Knights15Test]=/work/sandbox/knights15/apollotest-core/phx_test/
+    work_paths[Phx]=/work/phxwork/scm/phx/components/
+    work_paths[Phxtest]=/work/phxwork/test/phx_test/
+    work_paths[Sirius]=/work/siriussandbox/sirius/netapps/cloud_gen2/src
+
+    function apollo { cd ${work_paths[Apollo]} $@; }
+    function apollotest { cd ${work_paths[ApolloTest]} $@; }
+    function knights15 { cd ${work_paths[Knights15]} $@; }
+    function knights15test { cd ${work_paths[Knights15Test]} $@; }
+    function phx { cd ${work_paths[Phx]} $@; }
+    function phxtest { cd ${work_paths[Phxtest]} $@; }
+    function siriuswpp { cd ${work_paths[Sirius]} $@; }
+    function sandbox
+    {
+        [ ${#work_paths[@]} -le 0 ] && return 0
+        local _p
+        select_one_sh "${!work_paths[@]}" _p
+        [ -n "$_p" ] && cd ${work_paths[$_p]}
+    }
+
+    function g { sandbox $@; }
+    function G { sandbox $@; }
+
+    [ ! -L /work/apollotool ] && ln -s ${work_paths[Apollo]}../tools/linux-x86/any/bin /work/apollotool
+
+    mkdir -p /work/temp;
+    mkdir -p /work/backup;
+    if [ -d ${work_paths[Apollo]} ]; then
+        cd ${work_paths[Apollo]}
+    fi
+#**************************************************************************************
+#*
+#*                            repo init command
+#*
+#**************************************************************************************
+    function repoapollo
+    {
+        local _branch=''
+        [ -n "$1" ] && _branch="-m $1"
+        repo init -u git@git.boi.rd.hpicorp.net:/phx-manifests -b apollo $_branch;
+        repo manifest
+    }
+    function _repoapollo_comp
+    {
+        COMPREPLY=()
+        [ $COMP_CWORD -eq 1 ] && COMPREPLY=($(compgen -W "$(find /work/apollowork/.repo/manifests -name '*.xml' | sed -n '/freezes/!{s/^.*manifests\///;p}')" "$2"))
+    }
+    complete -F _repoapollo_comp repoapollo
+    function repophx
+    {
+        local _branch=''
+        [ -n "$1" ] && _branch="-m $1"
+        repo init -u git@git.boi.rd.hpicorp.net:/phx-manifests -b phx $_branch;
+        repo manifest
+    }
+    function _repophx_comp
+    {
+        COMPREPLY=()
+        [ $COMP_CWORD -eq 1 ] && COMPREPLY=($(compgen -W "$(find /work/phxwork/.repo/manifests -name '*.xml' | sed -n '/freezes/!{s/^.*manifests\///;p}')" "$2"))
+    }
+    complete -F _repophx_comp repophx
+    if [ -n $(which dart) ]; then
+        function dartwrapper
+        {
+            local _product_name=$1 _dart_ip=$2 _debug_list='' _trace_file=$3 _git_path=''
+            shift;shift;shift;
+            [ -z "$_product_name" ] || ! is_ip_sh "$_dart_ip" && echo 'usage: dartwrapper <product name> <ip>' && return 1;
+            _git_path=$(gittop 2>/dev/null)
+            _git_path=$(realpath ${_git_path%scm} 2>/dev/null)
+            #_debug_list=$(relatedpath $(find ${_git_path}/scm/phx/exe -name debuglist | sed -n '/'"$_product_name"'/p') 2>/dev/null)
+            [ ! -f "$_debug_list" ] && error_sh "can't find debuglist for $_product_name" && return 1;
+            [ -z "$_trace_file" ] && _trace_file=/work/temp/trace_"$_product_name"_$(randomname2)
+            dart -d "$_debug_list" -c "$_trace_file" -s -i "$_dart_ip" $@
+            echo $_trace_file
+        }
+        function _dartwrapper_comp
+        {
+            COMPREPLY=()
+            [ $COMP_CWORD -eq 1 ] && COMPREPLY=($(compgen -W "${!TARG_MAP[*]}" "$2"))
+            [ $COMP_CWORD -eq 2 ] && COMPREPLY=($(compgen -W "$ALL_IPS" "$2"))
+        }
+        complete -F _dartwrapper_comp -o default dartwrapper
+        function _dart_comp
+        {
+            local _git_path=''
+            COMPREPLY=()
+            case "$2" in
+                --*) COMPREPLY=($(compgen -W "$(dart 2>&1 | sed -n '/^ *\* *-/{s/^[^-]*//;s/ .*$//;s/,/\n/;p;}' | sed -n '/^--/p')" "${2/-/\\-}")) ;;
+                -*) COMPREPLY=($(compgen -W "$(dart 2>&1 | sed -n '/^ *\* *-/{s/^[^-]*//;s/ .*$//;s/,/\n/;p;}' | sed -n '/^-[^-]/p')" "${2/-/\\-}")) ;;
+            esac
+            case "${COMP_WORDS[$((COMP_CWORD - 1))]}" in
+                -i) COMPREPLY=($(compgen -W "$ALL_IPS" "$2")) ;;
+                -d) _git_path=$(gittop 2>/dev/null);
+                    if [ -n "$_git_path" ]; then
+                        _git_path=$(realpath ${_git_path%scm})
+                        COMPREPLY=($(for i in $(compgen -W "$(find ${_git_path}/scm/phx/exe -name debuglist 2>/dev/null)" "${_git_path}/scm/phx/exe/gen/$2"); do relatedpath $i; done))
+                    fi
+                    ;;
+            esac
+        }
+        complete -F _dart_comp -o default dart
+    fi
+fi
+#**************************************************************************************
+#*
+#*                            LEDM Command
+#*
+#**************************************************************************************
+LEDM_SH_DEBUG='OFF'
+function ledmdebug_on { LEDM_SH_DEBUG="ON"; }
+function ledmdebug_off { LEDM_SH_DEBUG="OFF"; }
+LEDM_TREES=''
+declare -r LEDM_TREE_CACHE_FILE=~/.ledmtrees
+function ledm_get
+{
+    local _ip=$1 _url=$2
+    shift; shift
+    httpclient_sh -t 'text/xml' -k -h "$_ip" -m get -u "$_url" "$@"
+}
+function ledm_put
+{
+    local _ip=$1 _url=$2 _payload=$3
+    shift; shift; shift
+    [ -f "$_payload" ] && _payload=$(<$_payload)
+    httpclient_sh -t 'text/xml' -k -h "$_ip" -m put -u "$_url" -p "$_payload" "$@"
+}
+function ledm_post
+{
+    local _ip=$1 _url=$2 _payload=$3
+    shift; shift; shift
+    [ -f "$_payload" ] && _payload=$(<$_payload)
+    httpclient_sh -t 'text/xml' -k -h "$_ip" -m post -u "$_url" -p "$_payload" "$@"
+}
+function ledmusb_get { ledm_get ledm1 "$@"; }
+function ledmusb_put { ledm_put ledm1 "$@"; }
+function ledmusb_post { ledm_post ledm1 "$@"; }
+function ledmnw_get { ledm_get "$@"; }
+function ledmnw_put { ledm_put "$@"; }
+function ledmnw_post { ledm_post "$@"; }
+function ledm_getalltrees
+{
+    local _ip=$1 _uri=''
+    [ -z "$_ip" ] && input_sth_sh -n -p "IP:" -v _ip
+    local _dis_tree=$(ledm_get "$_ip" /DevMgmt/DiscoveryTree.xml | xmlfmt_sh)
+    local _resourceUri=$(printf %s "$_dis_tree"  | awk '/ResourceURI/{print gensub(/^.*>(.*)<.*$/, "\\1", "g");}')
+    local _manifestUri=$(printf %s "$_dis_tree"  | awk '/ManifestURI/{print gensub(/^.*>(.*)<.*$/, "\\1", "g");}')
+    unset _uri
+    {
+        echo /DevMgmt/DiscoveryTree.xml GET
+        for _uri in $_resourceUri
+        do
+            echo "$_uri GET"
+        done
+        for _uri in $_manifestUri
+        do
+            echo "$_uri GET"
+            ledm_get "$_ip" "$_uri" | xmlfmt_sh | awk '
+                function trim(str)
+                {
+                    gsub(/\r/, "", str);
+                    gsub(/^[ \t]+/, "", str);
+                    gsub(/[ \t]+$/, "", str);
+                    gsub(/[ \t]+/, " ", str);
+                    return str;
+                }
+                BEGIN{
+                    lasturi = "";
+                    uriLevel[0] = 0;
+                    uriArray[0] = "";
+                }
+                /ResourceURI/{
+                    level = 0;
+                    preuri=gensub(/^(.*)<.*>(.*)<.*$/, "\\1\\2", "g");
+                    spaceCount = index(preuri, "/") - 1;
+
+                    findLevel = 0;
+                    ind = 0;
+                    for(ind in uriLevel)
+                    {
+                        if(uriLevel[ind] == spaceCount)
+                        {
+                            findLevel = 1;
+                            break;
+                        }
+                    }
+                    if(findLevel)
+                    {
+                        level = ind;
+                    }
+                    else
+                    {
+                        level = length(uriLevel);
+                        uriLevel[level] = spaceCount;
+                    }
+                    parturi = preuri;
+                    gsub(/^ +/, "", parturi);
+                    uriArray[level] = parturi;
+
+                    uri = "";
+                    for(i=1; i<=level; i++)
+                    {
+                        uri = uri uriArray[i];
+                    }
+                    lasturi = uri;
+                }
+                /Verb/{
+                    verb=gensub(/^.*<.*>(.*)<.*$/, "\\1", "g");
+                    if(uriVerb[lasturi] != "")
+                        uriVerb[lasturi] = uriVerb[lasturi] " "  toupper(verb);
+                    else
+                        uriVerb[lasturi] = toupper(verb);
+                }
+                END{
+                    asorti(uriVerb, uriList);
+                    for(m in uriList)
+                    {
+                        if(uriVerb[uriList[m]] ~ /^ *$/)
+                            uriVerb[uriList[m]] = "GET";
+                        print uriList[m],uriVerb[uriList[m]];
+                    }
+                }
+            '
+        done
+    } | sort | uniq
+}
+function ledmusb_getalltrees { ledm_getalltrees ledm1 "$@"; }
+function ledmnw_getalltrees { ledm_getalltrees "$@"; }
+function _ledm_tree_complete
+{
+    local _name='' _dir_name='' _temp_trees='' _word=$2 _temp=''
+    COMPREPLY=()
+    if [ -z "$LEDM_TREES" -a -f "$LEDM_TREE_CACHE_FILE" ]; then
+        LEDM_TREES=$(< "$LEDM_TREE_CACHE_FILE")
+    fi
+    if [[ "$1" == ledmusb* ]]; then
+        [ "$COMP_CWORD" -ne 1 ] && return 0
+    else
+        [ "$COMP_CWORD" -ne 2 ] && _ip_comp "$@" && return 0
+    fi
+    if [ -z "$LEDM_TREES" ]; then
+        if [[ "$1" == ledmusb* ]]; then
+            #LEDM_TREES=$(ledmusb_getalltrees | awk '{gsub(/{.*}/, "*", $1);print $1}')
+            LEDM_TREES=$(ledmusb_getalltrees | awk '{print $1}')
+        elif [[ "$1" == ledmnw* ]]; then
+            #LEDM_TREES=$(ledmnw_getalltrees ${COMP_WORDS[@]: 1: 1} | awk '{gsub(/{.*}/, "*", $1);print $1}')
+            LEDM_TREES=$(ledmnw_getalltrees ${COMP_WORDS[@]: 1: 1} | awk '{print $1}')
+        fi
+        echo "$LEDM_TREES" > "$LEDM_TREE_CACHE_FILE"
+    fi
+    for _name in $LEDM_TREES $(< ~/.ledmhiddentrees)
+    do
+        while [[ "$_name" =~ \{ ]];
+        do
+            if [[ "$_word" == ${_name%%\{*}?* ]]; then
+                _temp=${_word#${_name%%\{*}}
+                _temp=${_temp#/}
+                _temp=${_temp%%/*}
+                [[ "$_temp" =~ \{ ]] && break
+                _name=${_name/\{+(!(\}))\}/$_temp}
+            else
+                break
+            fi
+        done
+        _temp_trees+="$_name "
+    done
+    COMPREPLY=($(compgen -W "$_temp_trees" "$2"))
+}
+complete -F _ledm_tree_complete -o default ledmusb_get ledmusb_put ledmusb_post ledmnw_get ledmnw_put ledmnw_post
+function ledm_treeclear
+{
+    LEDM_TREES=''
+    rm -f "$LEDM_TREE_CACHE_FILE"
+}
+function ledm_getadapters
+{
+    local _ip=$1 _adapters='' _adapter='' _match=$2
+    _adapters=$(ledm_get "$_ip" /IoMgmt/Adapters | xmlfmt_sh | sed -n 's/^.*dd:ResourceURI>\(\s*\/IoMgmt\/Adapters[^<>]*\)<\/dd:ResourceURI.*$/\1/p')
+    [ -z "$_match" ] && echo "$_adapters" && return 0
+    for _adapter in $_adapters
+    do
+        if [ "$(basename ${_adapter,,})" == "${_match,,}" ]; then
+            echo $_adapter
+            break
+        fi
+    done
+}
+function ledmusb_getadapters { ledm_getadapters ledm1 "$@"; }
+function ledmnw_getadapters { ledm_getadapters "$@"; }
+function ledm_getip
+{
+    local _ip=$1
+    local _adapters='' _adapter=''
+    [ -z "$_ip" ] && input_sth_sh -n -p "IP:" -v _ip
+    _adapters=$(ledm_getadapters "$_ip")
+    for _adapter in $_adapters
+    do
+        ledm_get "$_ip" $_adapter/Protocols | xmlfmt_sh | sed -n 's/^.*dd:IPv\([46]\)Address>\(.*\)<\/dd:IPv\1Address.*$/'"$(basename $_adapter) "'IPv\1:\2/p'
+    done
+}
+function ledm_getip_v
+{
+    local _ver=$1 _ip=$2 _adapter_name=$3
+    [ "$_ver" != "6" ] && _ver=4
+    ledm_getip "$_ip" | sed -n '/'"$_adapter_name "'IPv'$_ver'/I{s/^[^:]*:\s*\(.*\)$/\1/;H}; ${ x; s/\n/ /g; s/^ *//g; s/ *$//; /^$/!p }'
+}
+function ledmusb_getip { ledm_getip ledm1 "$@"; }
+function ledmusb_getipv4 { ledm_getip_v 4 ledm1 "$@"; }
+function ledmusb_getipv6 { ledm_getip_v 6 ledm1 "$@"; }
+function ledmnw_getip { ledm_getip "$@"; }
+function ledmnw_getipv4 { ledm_getip_v 4 "$@"; }
+function ledmnw_getipv6 { ledm_getip_v 6 "$@"; }
+function ledm_wifi
+{
+    local _ip=$2 _onoff=$1 _uri='' _adapter=''
+    case "$_onoff" in
+        on) ;;
+        off) ;;
+        *) return 0 ;;
+    esac
+    local _payload='
+    <io:HardwareConfig xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:io="http://www.hp.com/schemas/imaging/con/ledm/iomgmt/2008/11/30">
+        <dd:Power>'"$_onoff"'</dd:Power>
+    </io:HardwareConfig>'
+    [ -z "$_ip" ] && input_sth_sh -n -p "IP:" -v _ip
+    _uri=$(ledm_getadapters "$_ip" "wifi0")
+    [ -z "$_uri" ] && error_sh "wifi0 not found!!!" && return 1
+    ledm_put "$_ip" "$_uri" "$_payload"
+}
+function ledmusb_wifion { ledm_wifi on ledm1 "$@"; }
+function ledmusb_wifioff { ledm_wifi off ledm1 "$@"; }
+function ledmnw_wifion { ledm_wifi on "$@"; }
+function ledmnw_wifioff { ledm_wifi off "$@"; }
+function ledm_getssid
+{
+    hex2str_sh "$(ledm_get "$1" /IoMgmt/Adapters/Wifi0/Profiles/1 | xmlfmt_sh | sed -n 's/^.*wifi\s*:\s*SSID>\(.*\)<\/.*$/\1/p')"
+}
+function ledmnw_getssid { ledm_getssid "$@"; }
+function ledmusb_getssid { ledm_getssid ledm1 "$@"; }
+function ledm_getallssids
+{
+    local _ssid_list='' _ip=$1 _ref_name=$2 _uri=''
+    local _m=''
+    [ -z "$_ip" ] && input_sth_sh -n -p "IP:" -v _ip
+    _uri=$(ledm_getadapters "$_ip" "wifi0")
+    [ -z "$_uri" ] && error_sh "wifi0 not found!!!" && return 1
+    [ -z "$_ref_name" -o "$_ref_name" != "_ssid_array" ] && local -a _ssid_array
+    _ssid_array=()
+    _ssid_list=$(ledm_get "$_ip" ${_uri%%\/}/WifiNetworks | xmlfmt_sh | awk '/wifi:SSID/{print gensub(/^.*>(.*)<.*$/, "\\1", "g")}')
+    [ -z "$_ssid_list" ] && return 1;
+    for _m in $_ssid_list
+    do
+        _ssid_array+=("$(hex2str_sh $_m)")
+    done
+    if [ -z "$_ref_name" ]; then
+        for _m in "${_ssid_array[@]}"
+        do
+            echo $_m
+        done
+        return 0
+    fi
+    unset _m
+    local -n _ref="$_ref_name"
+    _ref=("${_ssid_array[@]}")
+    return 0
+}
+function ledmusb_getallssids { ledm_getallssids ledm1 "$@"; }
+function ledmnw_getallssids { ledm_getallssids "$@"; }
+function ledm_connectwifi
+{
+#<io:Profile xmlns:io="http://www.hp.com/schemas/imaging/con/ledm/iomgmt/2008/11/30" xmlns:wifi="http://www.hp.com/schemas/imaging/con/wifi/2009/06/26">
+    local _payload_template='
+    <io:Profile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/" xmlns:io="http://www.hp.com/schemas/imaging/con/ledm/iomgmt/2008/11/30" xmlns:wifi="http://www.hp.com/schemas/imaging/con/wifi/2009/06/26" xsi:schemaLocation="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/ dd/DataDictionaryMasterLEDM.xsd http://www.hp.com/schemas/imaging/con/ledm/iomgmt/2008/11/30 IoMgmt.xsd http://www.hp.com/schemas/imaging/con/wifi/2009/06/26 wifi/wifi.xsd">
+        <io:AdapterProfile>
+            <io:WifiProfile>
+                <wifi:SSID>%s</wifi:SSID>
+                <wifi:CommunicationMode>infrastructure</wifi:CommunicationMode>
+                <wifi:EncryptionType>WPA_PSK</wifi:EncryptionType>
+                <wifi:AuthenticationMode>WPA_PSK</wifi:AuthenticationMode>
+                <io:KeyInfo>
+                    <io:WpaPassPhraseInfo>
+                        <wifi:RsnEncryption>AESOrTKIP</wifi:RsnEncryption>
+                        <wifi:RsnAuthorization>autoWPA</wifi:RsnAuthorization>
+                        <wifi:PassPhrase>%s</wifi:PassPhrase>
+                    </io:WpaPassPhraseInfo>
+                </io:KeyInfo>
+            </io:WifiProfile>
+        </io:AdapterProfile>
+    </io:Profile>'
+    local _ssid='' _passwd='' _payload='' _m='' _ip='' _uri=''
+    local -i _response=0 _count=0
+    local -a _ssids
+    OPTIND=1
+    while getopts "i:s:p:" _m;
+    do
+        case "$_m" in
+            i) _ip=$OPTARG ;;
+            s) _ssid=$OPTARG ;;
+            p) _passwd=$OPTARG ;;
+            ?) ;&
+            *) return 1;;
+        esac
+    done
+    while [ -z "$_ssid" ]
+    do
+        echo "retrieving SSID list..." >&2
+        ! ledm_getallssids "$_ip" _ssids && return 0
+        _ssids=("Refresh" "${_ssids[@]}" "Quit")
+        select_one_sh "${_ssids[@]}" _ssid
+        [ $_ssid == "Quit" ] && return 0;
+        [ $_ssid == "Refresh" ] && _ssid='' && continue;
+        break
+    done
+    [ -z $_passwd ] && input_sth_sh -p "Password: " -v _passwd
+    _ssid=`str2hex_sh "$_ssid"`
+    _passwd=`str2hex_sh "$_passwd"`
+    _payload=`printf "$_payload_template" "$_ssid" "$_passwd"`
+    [ -z "$_ip" ] && input_sth_sh -n -p "IP:" -v _ip
+    _uri=$(ledm_getadapters "$_ip" "wifi0")
+    [ -z "$_uri" ] && error_sh "wifi0 not found!!!" && return 1
+    ! ledm_put "$_ip" ${_uri%%\/}/Profiles/1 "$_payload" && return 1
+    echo "retrieving IP address..." >&2
+    _ip=''
+    while [ -z "$_ip" ]
+    do
+        _ip=$(ledmusb_getipv4 $(basename $_uri))
+        [ $_count -gt 6 ] && break
+        sleep 3
+        _count+=1
+    done
+    printf "IP: %s\n" $_ip
+    return 0
+}
+function ledmnw_connectwifi { ledm_connectwifi -i "$@"; }
+function ledmusb_connectwifi { ledm_connectwifi -i ledm1 "$@"; }
+function ledm_printerinfo
+{
+    local _ip=$1 _sed_script='' _date_code='' _print_template='%-18s : %s\n'
+    local _field=''
+    [ -z "$_ip" ] && input_sth_sh -n -p "IP:" -v _ip
+    for _field in Revision Date MakeAndModel UUID SerialNumber ProductNumber Display
+    do
+        _sed_script+='s/^.*'$_field'>\s*\(.*\)\s*<\/.*$/'$_field'>\1/p;'
+    done
+    if is_ip_sh "$_ip"; then
+        printf "$_print_template" "System Name" "$(tdbgexec_sh "$_ip" 'systemApp/GetSystemName' 2>/dev/null)"
+        _date_code=$(tdbgexec_sh "$_ip" '/systemApp/get eSystemFWROMDatecode' 2>/dev/null)
+        _date_code=${_date_code##*=*( )}
+        printf "$_print_template" "Firmware datecode" "$_date_code"
+    fi
+    ledm_get "$_ip" /DevMgmt/ProductConfigDyn.xml 2>/dev/null | xmlfmt_sh | sed -n "$_sed_script" | awk 'BEGIN{FS=">"}{if(NR != 1){printf("'"$_print_template"'", $1, $2)}}'
+    printf "$_print_template" "IPv4" "$(ledm_getip_v 4 "$_ip" 2>/dev/null)"
+    printf "$_print_template" "IPv6" "$(ledm_getip_v 6 "$_ip" 2>/dev/null)"
+    printf "$_print_template" "Connected SSID" "$(ledm_getssid "$_ip" 2>/dev/null)"
+}
+function ledmusb_printerinfo { ledm_printerinfo ledm1 "$@"; }
+function ledmnw_printerinfo
+{
+    local _ip _m
+    for _ip
+    do
+        for _m in {1..60};
+        do
+            printf '-'
+        done
+        printf "\n"
+        ledm_printerinfo "$_ip"; 
+    done
+}
+function ledmnw_simpleprinterinfo
+{
+    local _ip _m _field _sed_script='' _date_code _system_name
+    local -A _properties=() _print_template=()
+    _print_template[IP]="%-15s "
+    _print_template[SystemName]="%-10s "
+    _print_template[Date]="%-10s "
+    _print_template[MakeAndModel]="%-30s "
+    _print_template[ProductNumber]="%-15s "
+    _print_template[DateCode]="%-30s "
+    _print_template[Revision]="%s "
+    for _field in Revision Date MakeAndModel ProductNumber
+    do
+        _sed_script+='s/^.*'$_field'>\s*\(.*\)\s*<\/.*$/'$_field'>\1/p;'
+    done
+    for _field in IP SystemName Date MakeAndModel ProductNumber DateCode Revision 
+    do
+        printf "${_print_template[$_field]}" "$_field"
+    done
+    echo ''
+    for _ip
+    do
+        for _field in IP SystemName Date MakeAndModel ProductNumber DateCode Revision 
+        do
+            _properties["$_field"]=''
+        done
+        if is_ip_sh "$_ip"; then
+            _properties[IP]="$_ip"
+            _properties[SystemName]="$(tdbgexec_sh "$_ip" 'systemApp/GetSystemName' 2>/dev/null)"
+            _date_code=$(tdbgexec_sh "$_ip" '/systemApp/get eSystemFWROMDatecode' 2>/dev/null)
+            _properties[DateCode]=${_date_code##*=*( )}
+            eval $(ledm_get "$_ip" /DevMgmt/ProductConfigDyn.xml 2>/dev/null | xmlfmt_sh | sed -n "$_sed_script" | awk 'BEGIN{FS=">"}{if(NR != 1){printf("_properties[%s]=\"%s\"\n", $1, $2)}}')
+            for _field in IP SystemName Date MakeAndModel ProductNumber DateCode Revision 
+            do
+                printf "${_print_template[$_field]}" "${_properties[$_field]}"
+            done
+            echo ''
+        fi
+    done
+}
+function ledm_telnet
+{
+    local _onoff=$1 _ip=$2 _cmd=''
+    case "$_onoff" in
+        on) _cmd='enabled' ;;
+        off) _cmd='disabled' ;;
+        *) _onoff='' ;;
+    esac
+    [ -z "$_ip" ] && input_sth_sh -n -p "IP:" -v _ip
+    [ -n "$_onoff" ] && ledm_put "$_ip" /DevMgmt/ProductServiceDyn.xml "
+    <prdservicedyn:ProductServiceDyn xmlns:prdservicedyn=\"http://www.hp.com/schemas/imaging/con/ledm/productservicedyn/2009/01/10\">
+        <prdservicedyn:TelnetDebug>$_cmd</prdservicedyn:TelnetDebug>
+    </prdservicedyn:ProductServiceDyn>
+    " &&\
+    printf "TelnetDebug %s\n" "$(ledm_get "$_ip" /DevMgmt/ProductServiceDyn.xml | xmlfmt_sh | sed -n 's/^.*TelnetDebug>\(.*\)<\/.*$/\1/p')" &&\
+    return 0
+    return 1
+}
+function ledmusb_telnet { ledm_telnet on ledm1 "$@"; }
+function ledmusb_telneton { ledm_telnet on ledm1 "$@"; }
+function ledmusb_telnetoff { ledm_telnet off ledm1 "$@"; }
+function ledmnw_telnet { ledm_telnet "" "$@"; }
+function ledmnw_telneton { ledm_telnet on "$@"; }
+function ledmnw_telnetoff { ledm_telnet off "$@"; }
+function ledm_getpasswd
+{
+    ledm_get "$1" /DevMgmt/ProductConfigDyn.xml | xmlfmt_sh | grep ModelNumber | tail -n 1 | sed 's/^.*>\(.*\)<.*$/HPBoise\1/'
+}
+function ledmusb_getpasswd { ledm_getpasswd ledm1 "$@"; }
+function ledmnw_getpasswd { ledm_getpasswd "$@"; }
+function ledm_clearNVRAM
+{
+    local _ip=$1 _scope=$2 _payload=''
+    [ -z "$_ip" ] && input_sth_sh -n -p "IP:" -v _ip
+    case "${_scope,,}" in
+        all) ;;
+        protected) ;;
+        unprotected) ;;
+        *) _scope='' ;;
+    esac
+    [ -z "$_scope" ] && select_one_sh all unprotected protected _scope
+    _payload='<mcdyn:ManufacturingConfigDyn xmlns:mcdyn="http://www.hp.com/schemas/imaging/con/ledm/manufacturingconfig/2008/01/18"><mcdyn:ClearNVRAM>'"$_scope"'</mcdyn:ClearNVRAM></mcdyn:ManufacturingConfigDyn>'
+    ledm_put "$_ip" /DevMgmt/ManufacturingConfigDyn.xml "$_payload" -U "" -P "$(ledm_getpasswd "$_ip")"
+}
+function ledmusb_clearNVRAM { ledm_clearNVRAM ledm1 "$@"; }
+function ledmnw_clearNVRAM { ledm_clearNVRAM "$@"; }
+function _ledm_clear_nvram_comp
+{
+    COMPREPLY=()
+    if [[ "$1" == ledmusb* ]]; then
+        if [ $COMP_CWORD -eq 1 ]; then
+            COMPREPLY=($(compgen -W "all protected unprotected" "$2"))
+        fi
+    elif [[ "$1" == ledmnw* ]]; then
+        if [ $COMP_CWORD -eq 1 ]; then
+            _ip_comp "$@"
+        elif [ $COMP_CWORD -eq 2 ]; then
+            COMPREPLY=($(compgen -W "all protected unprotected" "$2"))
+        fi
+    fi
+}
+complete -F _ledm_clear_nvram_comp -o default ledmusb_clearNVRAM ledmnw_clearNVRAM
+function ledm_reboot
+{
+    local _ip=$1 _payload=''
+    [ -z "$_ip" ] && input_sth_sh -n -p "IP:" -v _ip
+    _payload='<mcdyn:ManufacturingConfigDyn xmlns:mcdyn="http://www.hp.com/schemas/imaging/con/ledm/manufacturingconfig/2008/01/18"><mcdyn:PrinterGeneralReset>powerCycle</mcdyn:PrinterGeneralReset></mcdyn:ManufacturingConfigDyn>'
+    ledm_put "$_ip" /DevMgmt/ManufacturingConfigDyn.xml "$_payload" -U "" -P "$(ledm_getpasswd "$_ip")"
+}
+function ledmusb_reboot { ledm_reboot ledm1 "$@"; }
+function ledmnw_reboot { ledm_reboot "$@"; }
+function ledm_buttonpress
+{
+    local _ip=$1 _btn='' _payload='' _btn_type='' _tmp=''
+    local -A _buttons=() 
+    [ -z "$_ip" ] && input_sth_sh -n -p "IP:" -v _ip
+    _tmp="$(ledm_get "$_ip" /DevMgmt/ManufacturingConfigCap.xml | xmlfmt_sh)"
+    _buttons['ControlPanelButtonPress']=$(echo "$_tmp" | sed -n 's/^.*ControlPanelButtonPress>\(.*\)<.*$/\1/p')
+    _buttons['ControlPanelVirtualButtonPress']=$(echo "$_tmp" | sed -n 's/^.*ControlPanelVirtualButtonPress>\(.*\)<.*$/\1/p')
+    [ -z "${_buttons[*]}" ] && error_sh "No button presss supported" && return 1
+    select_one_sh ${_buttons[*]} _btn
+    for _btn_type in ${!_buttons[@]}
+    do
+        if [[ "${_buttons[$_btn_type]}" == *$_btn* ]]; then
+            _payload='<mcdyn:ManufacturingConfigDyn xmlns:mcdyn="http://www.hp.com/schemas/imaging/con/ledm/manufacturingconfig/2008/01/18"><mcdyn:'"$_btn_type"'>'"$_btn"'</mcdyn:'"$_btn_type"'></mcdyn:ManufacturingConfigDyn>'
+            break;
+        fi
+    done
+    ledm_put "$_ip" /DevMgmt/ManufacturingConfigDyn.xml "$_payload" -U "" -P "$(ledm_getpasswd "$_ip")"
+}
+function ledmusb_buttonpress { ledm_buttonpress ledm1 "$@"; }
+function ledmnw_buttonpress { ledm_buttonpress "$@"; }
+function ledm_proxyset
+{
+    local _ip=$1 _proxy=$2 _port='' _payload='' _onoff='on'
+    [ -n "$_proxy" ] && _port=${_proxy##*:} && _proxy=${_proxy%:*}
+    if [ -z "$_proxy" -o -z "$_port" ]; then
+        _proxy=''
+        _port='1'
+        _onoff='off'
+    fi
+    _proxy="<dd:ResourceURI>$_proxy</dd:ResourceURI>"
+    _port="<dd:Port>$_port</dd:Port>"
+    _payload=$(printf '<nadyn:NetAppsDyn xmlns:nadyn="http://www.hp.com/schemas/imaging/con/ledm/netappdyn/2009/06/24" xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/"><nadyn:ProxyConfig>%s%s<dd:ProxySupport>%s</dd:ProxySupport></nadyn:ProxyConfig></nadyn:NetAppsDyn>' "$_proxy" "$_port" "$_onoff")
+    ledm_put "$_ip" /DevMgmt/NetAppsDyn.xml "$_payload"
+}
+function ledmusb_proxyset { ledm_proxyset ledm1 "$@"; }
+function ledmnw_proxyset { ledm_proxyset "$@"; }
+function ledmusb_setproxy { ledmusb_proxyset ${http_proxy##*//}; }
+function ledmnw_setproxy { ledmnw_proxyset "$1" ${http_proxy##*//}; }
+function ledm_setadminpasswd
+{
+    local _ip=$1 _passwd=$2 _payload=''
+    _payload=$(printf '<dd:Password xmlns:dd="http://www.hp.com/schemas/imaging/con/dictionaries/1.0/">%s</dd:Password>' "$(printf "%s" "$_passwd" | base64)")
+    ledm_put "$_ip" /DevMgmt/SecurityDyn.xml "$_payload"
+}
+function ledmusb_setadminpasswd { ledm_setadminpasswd ledm1 "$@"; }
+function ledmnw_setadminpasswd { ledm_setadminpasswd "$@"; }
+complete -F _ip_comp -o default $(for x in $(declare -F | sed -n '/ledmnw/{s/^.*\+ //;p}'); do ! complete -p $x 2>/dev/null >/dev/null && echo $x; done; unset x;)
+set +a

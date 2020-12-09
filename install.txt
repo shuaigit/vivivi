@@ -1,0 +1,36 @@
+    1  uname -r 
+    2  ls
+    3  cd 下载
+    4  ls
+    5  l
+    6  ls
+    7  sudo dpkg -i linux-*
+    8  reboot
+    9  uname -r
+   10  cd
+   11  ls
+   12  cd 下载
+   13  ls
+   14  tar zxvf iwlwifi-qu-48.13675109.0.tgz 
+   15  ls
+   16  cd iwlwifi-Qu-48.13675109.0/
+   17  ls
+   18  sudo cp iwlwifi-Qu-*-48.ucode /lib/firmware
+   19  dmesg | grep wifi
+   20  cd ../
+   21  ls
+   22  l
+   23  sl
+   24  ls
+   25  sudo dpkg -i linux-firmware_1.183_all.deb
+   26  reboot
+   27  uname -r
+   28  uname -a
+   29  cat /proc/version 
+   30  dmesg | grep wifi
+   31  lsmod
+   32  ifconfig
+   33  sudo apt-get install git gnupg flex bison gperf build-essential zip curl zlib1g-dev
+   34  sudo apt-get install gcc-multilib g++-multilib libc6-dev-i386 lib32ncurses5-dev x11proto-core-dev libx11-dev lib32z-dev libgl1-mesa-dev libxml2-utils xsltproc unzip
+   35  history
+   36  history > install.txt
